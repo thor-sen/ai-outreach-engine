@@ -1,0 +1,6 @@
+.env
+*.env
+bdr_decisions.json
+.DS_Store
+__pycache__/
+*.pyc
