@@ -23,6 +23,12 @@ This is the action layer. It reads firmographic data and pain signal data produc
 
 **This pipeline reads composite scores as an input. It doesn't calculate them.** Scoring lives in the composite scorer. One responsibility per service. If scoring logic needs to change, I change it in one place. If the BDR pipeline needs to change (new stages, a different LLM, a revised prompt registry), I don't touch scoring. Clean boundaries make both systems easier to reason about.
 
+**The confidence gate is set at 0.7.** Claude returns a confidence score with every classification. Above 0.7, the pipeline auto-progresses to outreach generation. Below that, the company is flagged for human review. 0.7 was chosen as the threshold where Claude's confidence correlated with classification quality in testing. Lower thresholds (0.6) let too many borderline cases through. Higher thresholds (0.8) rejected cases that were legitimate ICP fits but had moderate confidence. In production, the threshold should be calibrated against labeled outcomes rather than set by heuristic, and revisited when prompts change.
+
+**A 1.5-second delay between companies in the orchestrator.** The orchestrator waits 1.5 seconds between processing companies. The delay exists to avoid HubSpot rate limits and Anthropic API throttling. In production, this would be replaced by a proper rate limiter with backoff and retry logic. For a pipeline that processes hundreds of companies in a batch, the delay adds maybe 5-10 minutes of total runtime, which is acceptable for a background job.
+
+**Decision logs written to a local JSON file, not a database.** Every pipeline run writes decisions to `bdr_decisions.json`. The file is inspectable, version-controlled alongside the code, and requires no infrastructure. For a system this scale, a database is overkill. If volume grows or cross-run analytics become important, migration to Postgres is straightforward. The schema is already structured.
+
 ## Architecture Overview
 
 The system has two pipelines that work together:
